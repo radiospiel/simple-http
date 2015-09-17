@@ -159,9 +159,10 @@ class Simple::HTTP
     klass = REQUEST_CLASSES.fetch(method)
     request = klass.new(uri.request_uri)
 
-    if basic_auth
-      username, password = *basic_auth
-      request.basic_auth(username, password)
+    if uri.user
+      request.basic_auth(uri.user, uri.password)
+    elsif basic_auth
+      request.basic_auth(*basic_auth)
     end
 
     # set request headers

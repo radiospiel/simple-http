@@ -23,4 +23,18 @@ class SimpleHttpTest < Simple::HTTP::TestCase
       http.get "http://eu.httpbin.org/basic-auth/user/passwd"
     end
   end
+
+  def test_url_auth
+    http.get "http://user:passwd@eu.httpbin.org/basic-auth/user/passwd"
+  end
+
+  def test_url_auth_overrides_basic_auth
+    http.basic_auth = [ "wronguser", "passwd" ]
+    http.get "http://user:passwd@eu.httpbin.org/basic-auth/user/passwd"
+
+    http.basic_auth = [ "user", "passwd" ]
+    assert_http_error 401 do
+      http.get "http://wronguser:passwd@eu.httpbin.org/basic-auth/user/passwd"
+    end
+  end
 end
