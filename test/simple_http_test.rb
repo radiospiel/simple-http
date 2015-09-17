@@ -9,4 +9,9 @@ class SimpleHttpTest < Simple::HTTP::TestCase
     google = http.get "http://google.com"
     assert_match(/doctype/, google)
   end
+
+  def test_https_google
+    google = http.get "https://google.com"
+    assert_match(/doctype/, google)
+  end
 end
