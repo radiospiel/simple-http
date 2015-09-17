@@ -94,6 +94,10 @@ class Simple::HTTP
     end
 
     uri = URI.parse(url)
+    unless uri.is_a?(URI::HTTP)
+      raise ArgumentError, "Invalid URL: #{url}"
+    end
+
     http = Net::HTTP.new(uri.host, uri.port)
 
     #
