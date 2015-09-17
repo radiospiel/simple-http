@@ -4,11 +4,9 @@
 
 require_relative 'test_helper'
 
-class SimpleHttpTest < Test::Unit::TestCase
-  HTTP = Simple::HTTP.new
-
-  def test_loaded
-    google = HTTP.get "http://google.com"
+class SimpleHttpTest < Simple::HTTP::TestCase
+  def test_http_google
+    google = http.get "http://google.com"
     assert_match(/doctype/, google)
   end
 end

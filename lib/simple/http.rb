@@ -36,6 +36,11 @@ class Simple::HTTP
   # When set, appends this to all request URLs
   attr :default_params, true
 
+  #
+  # When set, sets Authorization headers to all requests. Must be an
+  # array [ username, password ].
+  attr :basic_auth, true
+
   def initialize
     self.follows_redirections = true
   end
@@ -145,6 +150,11 @@ class Simple::HTTP
   def build_request(method, uri, body, headers)
     klass = REQUEST_CLASSES.fetch(method)
     request = klass.new(uri.request_uri)
+
+    if basic_auth
+      username, password = *basic_auth
+      request.basic_auth(username, password)
+    end
 
     # set request headers
     # unless headers && !headers.empty?
