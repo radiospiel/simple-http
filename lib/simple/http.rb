@@ -4,6 +4,7 @@
 
 require "net/http"
 require "json"
+require "logger"
 
 module Simple; end
 class Simple::HTTP; end
@@ -20,6 +21,10 @@ require_relative "http/errors"
 # requests are jsonized, and all data in responses are parsed as JSON if
 # the Content-Type header is set to "application/json".
 class Simple::HTTP
+
+  #
+  # The logger instance.
+  attr :logger, true
 
   #
   # The base URL: when set, all requests that do not start with http: or 
@@ -43,6 +48,8 @@ class Simple::HTTP
 
   def initialize
     self.follows_redirections = true
+    self.logger = Logger.new(STDERR)
+    self.logger.level = Logger::WARN
   end
 
   def get(url, headers = {});               http :GET, url, nil, headers; end
@@ -90,6 +97,7 @@ class Simple::HTTP
   # raise an error.
   def http_(method, url, body, headers, max_redirections = 10)
     if method == :GET && cache && result = cache.read(url)
+      logger.debug "#{method} #{uri}: using cached result"
       return result
     end
 
@@ -110,8 +118,10 @@ class Simple::HTTP
 
     #
     # execute request
+    started_at = Time.now
     response = http.request(request)
-    
+    logger.info "#{method} #{uri}: #{response.body.bytesize} byte, #{"%.3f secs" % (Time.now - started_at)}"
+
     #
     # Most of the times Net::HTTP#request returns a response with the :uri
     # attribute set, but sometimes not. We  make sure that the uri is set 
@@ -123,6 +133,11 @@ class Simple::HTTP
     if response.is_a?(Net::HTTPSuccess)
       result = response.result
       if cache && method == :GET && expires_in = self.expires_in(response)
+        if response.expires_in == expires_in
+          logger.debug "#{method} #{uri}: store in cache, w/expiration of #{expires_in}"
+        else
+          logger.debug "#{method} #{uri}: store in cache, w/custom expiration of #{expires_in} (instead #{response.expires_in.inspect})"
+        end
         cache.write(url, result, expires_in: expires_in)
       end
 
