@@ -97,7 +97,7 @@ class Simple::HTTP
   # raise an error.
   def http_(method, url, body, headers, max_redirections = 10)
     if method == :GET && cache && result = cache.read(url)
-      logger.debug "#{method} #{uri}: using cached result"
+      logger.debug "#{method} #{url}: using cached result"
       return result
     end
 
@@ -120,7 +120,7 @@ class Simple::HTTP
     # execute request
     started_at = Time.now
     response = http.request(request)
-    logger.info "#{method} #{uri}: #{response.body.bytesize} byte, #{"%.3f secs" % (Time.now - started_at)}"
+    logger.info "#{method} #{url}: #{response.body.bytesize} byte, #{"%.3f secs" % (Time.now - started_at)}"
 
     #
     # Most of the times Net::HTTP#request returns a response with the :uri
@@ -134,9 +134,9 @@ class Simple::HTTP
       result = response.result
       if cache && method == :GET && expires_in = self.expires_in(response)
         if response.expires_in == expires_in
-          logger.debug "#{method} #{uri}: store in cache, w/expiration of #{expires_in}"
+          logger.debug "#{method} #{url}: store in cache, w/expiration of #{expires_in}"
         else
-          logger.debug "#{method} #{uri}: store in cache, w/custom expiration of #{expires_in} (instead #{response.expires_in.inspect})"
+          logger.debug "#{method} #{url}: store in cache, w/custom expiration of #{expires_in} (instead #{response.expires_in.inspect})"
         end
         cache.write(url, result, expires_in: expires_in)
       end
