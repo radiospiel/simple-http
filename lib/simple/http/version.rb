@@ -5,5 +5,5 @@
 
 module Simple; end
 class Simple::HTTP
-  VERSION = "0.1.2"
+  VERSION = "0.1.3"
 end
