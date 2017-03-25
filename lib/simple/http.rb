@@ -150,8 +150,14 @@ class Simple::HTTP
       if max_redirections <= 0
         raise TooManyRedirections.new(method, request, respons)
       end
-      
-      return http_(:GET, response["Location"], nil, {}, max_redirections - 1)
+
+      target_url = response["Location"]
+      unless target_url =~ /^(http|https):\/\//
+        base_url = "#{uri.scheme}://#{uri.host}"
+        File.join base_url, target_url
+      end
+
+      return http_(:GET, target_url, nil, {}, max_redirections - 1)
     end
 
     #
