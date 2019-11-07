@@ -7,7 +7,7 @@ module Simple; end
 class Simple::HTTP; end
 
 class Simple::HTTP::Error < RuntimeError
-  attr :method, :request, :response
+  attr_reader :method, :request, :response
 
   def initialize(method, request, response)
     @method, @request, @response = method, request, response

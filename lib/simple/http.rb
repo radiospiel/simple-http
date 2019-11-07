@@ -14,6 +14,8 @@ require_relative "http/result"
 require_relative "http/expires_in"
 require_relative "http/errors"
 
+require "openssl"
+
 #
 # A very simple, Net::HTTP-based HTTP client. 
 #
@@ -24,27 +26,27 @@ class Simple::HTTP
 
   #
   # The logger instance.
-  attr :logger, true
+  attr_accessor :logger
 
   #
-  # The base URL: when set, all requests that do not start with http: or 
+  # The base URL when set, all requests that do not start with http: or 
   # https: are done relative to this base URL. 
-  attr :base_url, true
+  attr_accessor :base_url
   
   #
   # When set (default), redirections are followed. Note: When 
   # follows_redirections is not set, a HTTP redirection would raise an
   # error - which is probably only useful when testing an interface.
-  attr :follows_redirections, true
+  attr_accessor :follows_redirections
 
   #
   # When set, appends this to all request URLs
-  attr :default_params, true
+  attr_accessor :default_params
 
   #
   # When set, sets Authorization headers to all requests. Must be an
   # array [ username, password ].
-  attr :basic_auth, true
+  attr_accessor :basic_auth
 
   def initialize
     self.follows_redirections = true
@@ -52,36 +54,28 @@ class Simple::HTTP
     self.logger.level = Logger::WARN
   end
 
-  def get(url, headers = {});               http :GET, url, nil, headers; end
-  def post(url, body = nil, headers = {});  http :POST, url, body, headers; end
-  def put(url, body = nil, headers = {});   http :PUT, url, body, headers; end
-  def delete(url, headers = {});            http :DELETE, url, nil, headers; end
+  def head(url, headers = {});              request :HEAD, url, nil, headers; end
+  def get(url, headers = {});               request :GET, url, nil, headers; end
+  def post(url, body = nil, headers = {});  request :POST, url, body, headers; end
+  def put(url, body = nil, headers = {});   request :PUT, url, body, headers; end
+  def delete(url, headers = {});            request :DELETE, url, nil, headers; end
 
   #
   # -- Caching ----------------------------------------------------------------
 
   # When set, and a response is cacheable (as it returns a valid expires_in 
   # value), the cache object is used to cache responses.
-  attr :cache, true
-
-  #
-  # when does the response expire? By default, calculates expiration based
-  # on response headers. Override as needed.
-  def expires_in(response)
-    response.expires_in
-  end
-
-  private
+  attr_accessor :cache
 
   # -- HTTP request -----------------------------------------------------------
 
-  def http(method, url, body = nil, headers)
+  def request(verb, url, body = nil, headers)
     #
     # normalize url; i.e. prepend base_url if the url itself is incomplete.
     unless url =~ /^(http|https):/
       url = File.join(base_url, url) 
     end
-    
+
     # append default_params, if set
     if default_params
       url.concat(url.include?("?") ? "&" : "?")
@@ -89,15 +83,21 @@ class Simple::HTTP
     end
 
     # "raw" execute request
-    http_ method, url, body, headers
+    execute_request verb, url, body, headers
   end
+
+  private
 
   # 
   # do a HTTP request, return its response or, when not successful, 
   # raise an error.
-  def http_(method, url, body, headers, max_redirections = 10)
-    if method == :GET && cache && result = cache.read(url)
-      logger.debug "#{method} #{url}: using cached result"
+  def execute_request(verb, url, body, headers, max_redirections = 10)
+    unless REQUEST_CLASSES.key?(verb)
+      raise ArgumentError, "Invalid verb #{verb.inspect}"
+    end
+
+    if verb == :GET && cache && result = cache.read(url)
+      logger.debug "#{verb} #{url}: using cached result"
       return result
     end
 
@@ -114,13 +114,14 @@ class Simple::HTTP
 
     #
     # build request
-    request = build_request method, uri, body, headers
+    request = build_request verb, uri, body, headers
 
     #
     # execute request
     started_at = Time.now
     response = http.request(request)
-    logger.info "#{method} #{url}: #{response.body.bytesize} byte, #{"%.3f secs" % (Time.now - started_at)}"
+    response_size = response.body&.bytesize || 0
+    logger.info "#{verb} #{url}: #{response_size} byte, #{"%.3f secs" % (Time.now - started_at)}"
 
     #
     # Most of the times Net::HTTP#request returns a response with the :uri
@@ -132,13 +133,9 @@ class Simple::HTTP
     # handle successful responses.
     if response.is_a?(Net::HTTPSuccess)
       result = response.result
-      if cache && method == :GET && expires_in = self.expires_in(response)
-        if response.expires_in == expires_in
-          logger.debug "#{method} #{url}: store in cache, w/expiration of #{expires_in}"
-        else
-          logger.debug "#{method} #{url}: store in cache, w/custom expiration of #{expires_in} (instead #{response.expires_in.inspect})"
-        end
-        cache.write(url, result, expires_in: expires_in)
+      if cache && verb == :GET && response.expires_in
+        logger.debug "#{verb} #{url}: store in cache, w/expiration of #{response.expires_in}"
+        cache.write(url, result, expires_in: response.expires_in)
       end
 
       return result
@@ -151,17 +148,18 @@ class Simple::HTTP
         raise TooManyRedirections.new(method, request, respons)
       end
       
-      return http_(:GET, response["Location"], nil, {}, max_redirections - 1)
+      return execute_request(:GET, response["Location"], nil, {}, max_redirections - 1)
     end
 
     #
     # raise an error in any other case.
-    raise Error.new(method, request, response)
+    raise Error.new(verb, request, response)
   end
 
   private
 
   REQUEST_CLASSES = {
+    :HEAD   =>  Net::HTTP::Head,
     :GET    =>  Net::HTTP::Get,
     :POST   =>  Net::HTTP::Post,
     :PUT    =>  Net::HTTP::Put,

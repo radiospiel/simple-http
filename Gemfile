@@ -10,6 +10,7 @@ gemspec
 group :development do
   gem 'rake'
   gem 'test-unit'
-  # gem 'mocha'
+
+  # gem 'rspec-httpd', path: "../rspec-httpd", require: false
   # gem "simplecov", :require => false
 end

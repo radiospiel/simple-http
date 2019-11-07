@@ -9,7 +9,7 @@ class Net::HTTPResponse
   #
   # evaluate and potentially parse response
   def result
-    case response.content_type
+    case content_type
     when "application/json"
       JSON.parse(body) unless body.empty?
     else
@@ -23,6 +23,8 @@ class Net::HTTPResponse
   # returns a body. The resulting string is encoded in ASCII-8BIT, if the 
   # content type is binary, and encoded in UTF8 otherwise.
   def body_string
+    return nil unless self.body # e.g. HEAD
+
     default_encoding = content_is_binary? ? "ASCII-8BIT" : "UTF-8"
 
     body = self.body
