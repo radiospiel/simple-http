@@ -6,6 +6,8 @@ require "net/http"
 require "json"
 require "logger"
 
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
 module Simple; end
 class Simple::HTTP; end
 
@@ -17,24 +19,23 @@ require_relative "http/response"
 require "openssl"
 
 #
-# A very simple, Net::HTTP-based HTTP client. 
+# A very simple, Net::HTTP-based HTTP client.
 #
 # Has some support for transferring JSON data: all data in PUT and POST
 # requests are jsonized, and all data in responses are parsed as JSON if
 # the Content-Type header is set to "application/json".
 class Simple::HTTP
-
   #
   # The logger instance.
   attr_accessor :logger
 
   #
-  # The base URL when set, all requests that do not start with http: or 
-  # https: are done relative to this base URL. 
+  # The base URL when set, all requests that do not start with http: or
+  # https: are done relative to this base URL.
   attr_accessor :base_url
-  
+
   #
-  # When set (default), redirections are followed. Note: When 
+  # When set (default), redirections are followed. Note: When
   # follows_redirections is not set, a HTTP redirection would raise an
   # error - which is probably only useful when testing an interface.
   attr_accessor :follows_redirections
@@ -50,30 +51,43 @@ class Simple::HTTP
 
   def initialize
     self.follows_redirections = true
-    self.logger = Logger.new(STDERR)
-    self.logger.level = Logger::WARN
+    self.logger = Logger.new(STDERR, level: :warn)
   end
 
-  def head(url, headers = {});              request :HEAD, url, nil, headers; end
-  def get(url, headers = {});               request :GET, url, nil, headers; end
-  def post(url, body = nil, headers = {});  request :POST, url, body, headers; end
-  def put(url, body = nil, headers = {});   request :PUT, url, body, headers; end
-  def delete(url, headers = {});            request :DELETE, url, nil, headers; end
+  def head(url, headers = {})
+    request :HEAD, url, nil, headers
+  end
+
+  def get(url, headers = {})
+    request :GET, url, nil, headers
+  end
+
+  def post(url, body = nil, headers = {})
+    request :POST, url, body, headers
+  end
+
+  def put(url, body = nil, headers = {})
+    request :PUT, url, body, headers
+  end
+
+  def delete(url, headers = {})
+    request :DELETE, url, nil, headers
+  end
 
   #
   # -- Caching ----------------------------------------------------------------
 
-  # When set, and a response is cacheable (as it returns a valid expires_in 
+  # When set, and a response is cacheable (as it returns a valid expires_in
   # value), the cache object is used to cache responses.
   attr_accessor :cache
 
   # -- HTTP request -----------------------------------------------------------
 
-  def request(verb, url, body = nil, headers)
+  def request(verb, url, body, headers)
     #
     # normalize url; i.e. prepend base_url if the url itself is incomplete.
     unless url =~ /^(http|https):/
-      url = File.join(base_url, url) 
+      url = File.join(base_url, url)
     end
 
     # append default_params, if set
@@ -88,15 +102,17 @@ class Simple::HTTP
 
   private
 
-  # 
-  # do a HTTP request, return its response or, when not successful, 
+  # rubocop:disable Metrics/MethodLength
+
+  #
+  # do a HTTP request, return its response or, when not successful,
   # raise an error.
   def execute_request(verb, url, body, headers, max_redirections = 10)
     unless REQUEST_CLASSES.key?(verb)
       raise ArgumentError, "Invalid verb #{verb.inspect}"
     end
 
-    if verb == :GET && cache && result = cache.read(url)
+    if verb == :GET && cache && (result = cache.read(url))
       logger.debug "#{verb} #{url}: using cached result"
       return result
     end
@@ -125,7 +141,7 @@ class Simple::HTTP
 
     #
     # Most of the times Net::HTTP#request returns a response with the :uri
-    # attribute set, but sometimes not. We  make sure that the uri is set 
+    # attribute set, but sometimes not. We  make sure that the uri is set
     # everytime.
     response.uri = uri
 
@@ -134,9 +150,9 @@ class Simple::HTTP
 
     #
     # handle redirections. Note that this results in a NEW response object.
-    if response.is_a?(Net::HTTPRedirection) && self.follows_redirections
+    if response.is_a?(Net::HTTPRedirection) && follows_redirections
       if max_redirections <= 0
-        raise TooManyRedirections.new(response)
+        raise TooManyRedirections, response
       end
 
       return execute_request(:GET, response["Location"], nil, {}, max_redirections - 1)
@@ -158,8 +174,7 @@ class Simple::HTTP
     ::Simple::HTTP::Response.build request: request, response: response
   end
 
-  private
-
+  # rubocop:disable Style/HashSyntax, Layout/AlignHash
   REQUEST_CLASSES = {
     :HEAD   =>  Net::HTTP::Head,
     :GET    =>  Net::HTTP::Get,
@@ -170,7 +185,7 @@ class Simple::HTTP
 
   #
   # build a HTTP request object.
-  def build_request(method, uri, body, headers)
+  def build_request(method, uri, body, _headers)
     klass = REQUEST_CLASSES.fetch(method)
     request = klass.new(uri.request_uri)
 
