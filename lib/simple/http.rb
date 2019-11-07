@@ -10,9 +10,9 @@ module Simple; end
 class Simple::HTTP; end
 
 require_relative "http/version"
-require_relative "http/result"
 require_relative "http/expires_in"
 require_relative "http/errors"
+require_relative "http/response"
 
 require "openssl"
 
@@ -106,10 +106,10 @@ class Simple::HTTP
       raise ArgumentError, "Invalid URL: #{url}"
     end
 
-    http = Net::HTTP.new(uri.host, uri.port)
+    client = Net::HTTP.new(uri.host, uri.port)
     if uri.scheme == "https"
-      http.use_ssl = true
-      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      client.use_ssl = true
+      client.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
 
     #
@@ -119,7 +119,7 @@ class Simple::HTTP
     #
     # execute request
     started_at = Time.now
-    response = http.request(request)
+    response = client.request(request)
     response_size = response.body&.bytesize || 0
     logger.info "#{verb} #{url}: #{response_size} byte, #{"%.3f secs" % (Time.now - started_at)}"
 
@@ -129,31 +129,33 @@ class Simple::HTTP
     # everytime.
     response.uri = uri
 
-    #
-    # handle successful responses.
-    if response.is_a?(Net::HTTPSuccess)
-      result = response.result
-      if cache && verb == :GET && response.expires_in
-        logger.debug "#{verb} #{url}: store in cache, w/expiration of #{response.expires_in}"
-        cache.write(url, result, expires_in: response.expires_in)
-      end
-
-      return result
-    end
+    # Keep the request
+    # response.request = request
 
     #
-    # handle redirections.
+    # handle redirections. Note that this results in a NEW response object.
     if response.is_a?(Net::HTTPRedirection) && self.follows_redirections
       if max_redirections <= 0
-        raise TooManyRedirections.new(method, request, respons)
+        raise TooManyRedirections.new(response)
       end
-      
+
       return execute_request(:GET, response["Location"], nil, {}, max_redirections - 1)
     end
 
+    # #
+    # # [TODO] caching
+    # # handle successful responses.
+    # if response.is_a?(Net::HTTPSuccess)
+    #   # result = response.result
+    #   if cache && verb == :GET && response.expires_in
+    #     logger.debug "#{verb} #{url}: store in cache, w/expiration of #{response.expires_in}"
+    #     cache.write(url, result, expires_in: response.expires_in)
+    #   end
     #
-    # raise an error in any other case.
-    raise Error.new(verb, request, response)
+    #   return response
+    # end
+
+    ::Simple::HTTP::Response.build request: request, response: response
   end
 
   private

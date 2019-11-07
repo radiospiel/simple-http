@@ -5,9 +5,15 @@
 require_relative 'test_helper'
 
 class RedirectionTest < Simple::HTTP::TestCase
+  def test_limits_redirections
+    assert_raise(Simple::HTTP::TooManyRedirections) {
+      http.get "/redirect-to-self"
+    }
+  end
+
   def test_follows_redirections
-    html = http.get "/redirect-to?url=http://#{HOST}:#{PORT}/redirection-target"
-    assert_match(/I am the redirection target/, html)
+    response = http.get "/redirect-to?url=http://#{HOST}:#{PORT}/redirection-target"
+    assert_match(/I am the redirection target/, response.result)
   end
 
   # We have a hard time to convince the test application to redirect

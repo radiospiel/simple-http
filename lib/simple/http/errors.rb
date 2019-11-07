@@ -7,27 +7,35 @@ module Simple; end
 class Simple::HTTP; end
 
 class Simple::HTTP::Error < RuntimeError
-  attr_reader :method, :request, :response
+  attr_reader :response
 
-  def initialize(method, request, response)
-    @method, @request, @response = method, request, response
+  def initialize(response)
+    @response = response
   end
 
   def code
     response.code.to_i
   end
 
+  def request
+    @response.request
+  end
+
+  def verb
+    request.class::METHOD
+  end
+
   def message
-    message = "#{method} #{response.uri} ##{response.code} #{response.message}"
-    if response.is_a?(Net::HTTPRedirection)
-      message += " To #{response["Location"]}"
-    end
-    message
+    "#{verb} #{request.uri} ##{response.code} #{response.message}"
   end
 end
 
 class Simple::HTTP::TooManyRedirections < Simple::HTTP::Error
+  def location
+    response["Location"]
+  end
+
   def message
-    "Too many redirections; after\n#{super}"
+    "#{super}: too many redirections (latest to #{location})"
   end
 end

@@ -13,13 +13,13 @@ class EchoTest < Simple::HTTP::TestCase
       b: 2
     MSG
 
-    assert_equal(expected, response)
+    assert_equal(expected, response.result)
   end
 
   def test_head
     response = http.head "/echo?a=1&b=2"
-    assert_equal(nil, response)
-    # assert_equal(200, response.status)
+    assert_equal(nil, response.result)
+    assert_equal(200, response.status)
   end
 
   def body_example
@@ -38,7 +38,7 @@ class EchoTest < Simple::HTTP::TestCase
       {"foo":"bar"}
     MSG
 
-    assert_equal(expected, response)
+    assert_equal(expected, response.result)
   end
 
   def test_put
@@ -51,7 +51,7 @@ class EchoTest < Simple::HTTP::TestCase
       {"foo":"bar"}
     MSG
 
-    assert_equal(expected, response)
+    assert_equal(expected, response.result)
   end
 
   def test_delete
@@ -62,6 +62,6 @@ class EchoTest < Simple::HTTP::TestCase
       b: 2
     MSG
 
-    assert_equal(expected, response)
+    assert_equal(expected, response.result)
   end
 end

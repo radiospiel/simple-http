@@ -46,13 +46,13 @@ class Simple::HTTP::TestCase < Test::Unit::TestCase
   end
 
   def assert_http_error(expected_status, &block)
-    http_error = assert_raises(Simple::HTTP::Error, &block)
-    assert_equal(expected_status, http_error.code)
+    response = yield
+    assert_equal(expected_status, response.status)
   end
 
   def assert_http_redirects_to(expected_location, &block)
-    http_error = assert_raises(Simple::HTTP::Error, &block)
-    assert_includes([301, 302], http_error.code)
-    assert_equal(expected_location, http_error.response["Location"])
+    response = yield
+    assert_includes([301, 302], response.status)
+    assert_equal(expected_location, response.headers["Location"])
   end
 end
