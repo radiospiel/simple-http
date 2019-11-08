@@ -25,7 +25,7 @@ module Simple::HTTP::Driver::Default
     ::Simple::HTTP::Response.new request: request,
                                  status: Integer(resp.code),
                                  message: resp.message,
-                                 headers: build_headers(resp),
+                                 headers: Simple::HTTP::Headers.new(resp),
                                  body: body_w_correct_encoding(resp),
                                  content_type: resp.content_type,
                                  bytes: (resp.body&.bytesize || 0)
@@ -79,12 +79,6 @@ module Simple::HTTP::Driver::Default
       net_http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
     net_http
-  end
-
-  def build_headers(resp)
-    resp.canonical_each.each_with_object({}) do |(key, value), hsh|
-      hsh[key] = value
-    end
   end
 
   # [TODO] review this.

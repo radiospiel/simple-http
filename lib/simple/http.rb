@@ -12,6 +12,7 @@ class Simple::HTTP; end
 require_relative "http/version"
 require_relative "http/caching"
 require_relative "http/errors"
+require_relative "http/headers"
 require_relative "http/request"
 require_relative "http/response"
 
