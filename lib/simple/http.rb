@@ -6,14 +6,13 @@ require "net/http"
 require "json"
 require "logger"
 
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-
 module Simple; end
 class Simple::HTTP; end
 
 require_relative "http/version"
-require_relative "http/expires_in"
+require_relative "http/caching"
 require_relative "http/errors"
+require_relative "http/request"
 require_relative "http/response"
 
 require "openssl"
@@ -90,126 +89,67 @@ class Simple::HTTP
       url = File.join(base_url, url)
     end
 
+    uri = URI.parse(url)
+    unless uri.is_a?(URI::HTTP)
+      raise ArgumentError, "Invalid URL: #{url}"
+    end
+
     # append default_params, if set
     if default_params
       url.concat(url.include?("?") ? "&" : "?")
       url.concat default_params
     end
 
-    # "raw" execute request
-    execute_request verb, url, body, headers
+    request = Request.new(verb: verb, url: url, body: body, headers: headers)
+
+    execute_request(request)
   end
 
   private
 
-  # rubocop:disable Metrics/MethodLength
+  def execute_request(request, max_redirections: 10)
+    response = execute_request_w_caching(request)
 
-  #
-  # do a HTTP request, return its response or, when not successful,
-  # raise an error.
-  def execute_request(verb, url, body, headers, max_redirections = 10)
-    unless REQUEST_CLASSES.key?(verb)
-      raise ArgumentError, "Invalid verb #{verb.inspect}"
-    end
+    return response unless response.status >= 300 && response.status <= 399
+    return response unless follows_redirections
 
-    if verb == :GET && cache && (result = cache.read(url))
-      logger.debug "#{verb} #{url}: using cached result"
-      return result
-    end
+    raise ::Simple::HTTP::TooManyRedirections, response if max_redirections <= 0
 
-    uri = URI.parse(url)
-    unless uri.is_a?(URI::HTTP)
-      raise ArgumentError, "Invalid URL: #{url}"
-    end
-
-    client = Net::HTTP.new(uri.host, uri.port)
-    if uri.scheme == "https"
-      client.use_ssl = true
-      client.verify_mode = OpenSSL::SSL::VERIFY_PEER
-    end
-
-    #
-    # build request
-    request = build_request verb, uri, body, headers
-
-    #
-    # execute request
-    started_at = Time.now
-    response = client.request(request)
-    response_size = response.body&.bytesize || 0
-    logger.info "#{verb} #{url}: #{response_size} byte, #{"%.3f secs" % (Time.now - started_at)}"
-
-    #
-    # Most of the times Net::HTTP#request returns a response with the :uri
-    # attribute set, but sometimes not. We  make sure that the uri is set
-    # everytime.
-    response.uri = uri
-
-    # Keep the request
-    # response.request = request
-
-    #
-    # handle redirections. Note that this results in a NEW response object.
-    if response.is_a?(Net::HTTPRedirection) && follows_redirections
-      if max_redirections <= 0
-        raise TooManyRedirections, response
-      end
-
-      return execute_request(:GET, response["Location"], nil, {}, max_redirections - 1)
-    end
-
-    # #
-    # # [TODO] caching
-    # # handle successful responses.
-    # if response.is_a?(Net::HTTPSuccess)
-    #   # result = response.result
-    #   if cache && verb == :GET && response.expires_in
-    #     logger.debug "#{verb} #{url}: store in cache, w/expiration of #{response.expires_in}"
-    #     cache.write(url, result, expires_in: response.expires_in)
-    #   end
-    #
-    #   return response
-    # end
-
-    ::Simple::HTTP::Response.build request: request, response: response
+    request = ::Simple::HTTP::Request.new(verb: :GET, url: response.headers["Location"], headers: {})
+    execute_request(request, max_redirections: max_redirections - 1)
   end
 
-  # rubocop:disable Style/HashSyntax, Layout/AlignHash
-  REQUEST_CLASSES = {
-    :HEAD   =>  Net::HTTP::Head,
-    :GET    =>  Net::HTTP::Get,
-    :POST   =>  Net::HTTP::Post,
-    :PUT    =>  Net::HTTP::Put,
-    :DELETE =>  Net::HTTP::Delete
-  }.freeze #:nodoc:
+  def execute_request_w_caching(request)
+    is_cacheable = request.verb == :GET && cache
 
-  #
-  # build a HTTP request object.
-  def build_request(method, uri, body, _headers)
-    klass = REQUEST_CLASSES.fetch(method)
-    request = klass.new(uri.request_uri)
-
-    if uri.user
-      request.basic_auth(uri.user, uri.password)
-    elsif basic_auth
-      request.basic_auth(*basic_auth)
+    if is_cacheable && (cached = Caching.fetch(request))
+      return cached
     end
 
-    # set request headers
-    # unless headers && !headers.empty?
-    #   # TODO: set headers
-    #   # set_request_headers request, headers
-    # end
+    response = execute_request_w_logging(request)
 
-    # set request body
-    if request.request_body_permitted? && body
-      request.content_type = "application/json"
-      if body.is_a?(Hash) || body.is_a?(Array)
-        body = JSON.generate(body)
-      end
-      request.body = body
+    expires_in = Caching.determine_expires_in(response)
+    if is_cacheable && expires_in
+      Caching.store(request, response, expires_in: expires_in)
     end
 
-    request
+    response
+  end
+
+  def execute_request_w_logging(request)
+    started_at = Time.now
+
+    response = driver.execute_request(request, client: self)
+
+    logger.info do
+      "#{request}: #{response}, #{"%.3f secs" % (Time.now - started_at)}"
+    end
+
+    response
+  end
+
+  def driver
+    require "simple/http/driver/default"
+    ::Simple::HTTP::Driver::Default
   end
 end

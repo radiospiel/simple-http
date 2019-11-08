@@ -13,8 +13,8 @@ class Simple::HTTP::Error < RuntimeError
     @response = response
   end
 
-  def code
-    response.code.to_i
+  def status
+    response.status
   end
 
   def request
@@ -26,7 +26,7 @@ class Simple::HTTP::Error < RuntimeError
   end
 
   def message
-    "#{verb} #{request.uri} ##{response.code} #{response.message}"
+    "#{verb} #{request.uri} ##{status} #{response.message}"
   end
 end
 
