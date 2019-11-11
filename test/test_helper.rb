@@ -32,7 +32,7 @@ class Simple::HTTP::TestCase < Test::Unit::TestCase
 
     # The command to start the server must reset the BUNDLE_GEMFILE environment
     # setting.
-    command = "cd ../simple-httpd/ && BUNDLE_GEMFILE= bin/simple-httpd --port=12345 #{httpd_root} -q" 
+    command = "cd ../simple-httpd/ && BUNDLE_GEMFILE= PORT=12345 bin/simple-httpd #{httpd_root} -q" 
     command = "#{command} 2> log/simple-httpd.log" 
 
     ::RSpec::Httpd::Server.start! port: PORT, command: command

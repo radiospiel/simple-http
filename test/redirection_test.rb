@@ -13,7 +13,7 @@ class RedirectionTest < Simple::HTTP::TestCase
 
   def test_follows_redirections
     response = http.get "/redirect-to?url=http://#{HOST}:#{PORT}/redirection-target"
-    assert_match(/I am the redirection target/, response.result)
+    assert_match(/I am the redirection target/, response.content)
   end
 
   # We have a hard time to convince the test application to redirect

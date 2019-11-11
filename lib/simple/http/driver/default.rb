@@ -26,9 +26,7 @@ module Simple::HTTP::Driver::Default
                                  status: Integer(resp.code),
                                  message: resp.message,
                                  headers: Simple::HTTP::Headers.new(resp),
-                                 body: body_w_correct_encoding(resp),
-                                 content_type: resp.content_type,
-                                 bytes: (resp.body&.bytesize || 0)
+                                 body: resp.body
   end
 
   private
@@ -79,26 +77,5 @@ module Simple::HTTP::Driver::Default
       net_http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     end
     net_http
-  end
-
-  # [TODO] review this.
-  # returns a body string, with either ASCII-8BIT or UTF8 encoding.
-  def body_w_correct_encoding(response)
-    body = response.body
-    return nil unless body # e.g. HEAD
-
-    # type_params: "Any parameters specified for the content type, returned as
-    # a Hash. For example, a header of Content-Type: text/html; charset=EUC-JP
-    # would result in #type_params returning {'charset' => 'EUC-JP'}"
-    if (charset = response.type_params["charset"])
-      body = body.force_encoding(charset)
-    end
-
-    default_encoding = case response.content_type
-                       when /^image/ then "ASCII-8BIT"
-                       else "UTF-8"
-                       end
-
-    body.encode(default_encoding)
   end
 end

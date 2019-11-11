@@ -1,37 +1,59 @@
-# rubocop:disable Metrics/ParameterLists
+require_relative "./body_builder"
 
 class Simple::HTTP::Response
+  BodyBuilder = Simple::HTTP::BodyBuilder
+
   attr_reader :request
   attr_reader :status
   attr_reader :message
   attr_reader :headers
-  attr_reader :body
-  attr_reader :content_type
+  attr_reader :original_body
 
-  def initialize(request:, body:, headers:, status:, message:, content_type:, bytes: 0)
+  def initialize(request:, body:, headers:, status:, message:)
     @request, @headers = request, headers
     @status, @message = status, message
-    @body, @content_type = body, content_type
-    @bytes = bytes
+    @original_body = body
+
+    # adjust encoding on original_body
+    @body_builder = BodyBuilder.new(headers["Content-Type"])
+
+    if @original_body && (charset = @body_builder.charset)
+      @original_body.force_encoding(charset)
+    end
+  end
+
+  # e.g "text/plain"
+  def media_type
+    @body_builder.media_type
+  end
+
+  # returns the body
+  #
+  # This method reencodes the text body into UTF-8. Non-text bodies should be
+  # encoded as ASCII-8BIT (a.k.a. "BINARY")
+  def body
+    @body ||= @body_builder.reencode(@original_body)
+  end
+
+  def bytes
+    @original_body&.byte_size || 0
   end
 
   def to_s
     "#{status} #{message.gsub(/\s+$/, "")} (#{bytes} byte)"
   end
 
-  #
   # evaluate and potentially parses response body.
   # raises an Simple::Http::Error if the result code is not a 2xx
-  def result!
+  def content!
     raise Error, self unless status >= 200 && status <= 299
 
-    result
+    content
   end
 
-  #
   # evaluate and potentially parse response
-  def result
-    case content_type
+  def content
+    case media_type
     when "application/json"
       JSON.parse(body) unless body.empty?
     else

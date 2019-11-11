@@ -87,3 +87,6 @@ Style/NonNilCheck:
   
 Style/ParallelAssignment:
   Enabled: false
+
+Style/GuardClause:
+  Enabled: false
