@@ -3,3 +3,4 @@ rdoc
 pkg
 log
 Gemfile.lock
+.rake_t_cache
