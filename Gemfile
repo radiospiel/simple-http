@@ -7,9 +7,13 @@ source "https://rubygems.org"
 
 gemspec
 
-group :development do
+group :development, :test do
   gem 'rake'
   gem 'test-unit'
-  # gem 'mocha'
-  # gem "simplecov", :require => false
+
+  gem "rspec-httpd", "~> 0.1"
+  # gem 'rspec-httpd', path: "../rspec-httpd", require: false
+  gem "simple-httpd", "~> 0.1", require: false
+  # gem 'simple-httpd', path: "../rspec-httpd", require: false
+  gem "simplecov", :require => false
 end

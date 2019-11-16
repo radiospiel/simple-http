@@ -7,14 +7,14 @@ require_relative 'test_helper'
 class SimpleHttpTest < Simple::HTTP::TestCase
   def test_assert_http_error
     assert_http_error(456) do
-      http.get "http://eu.httpbin.org/status/456"
+      http.get "/status/456"
     end
   end
 
   def test_assert_http_redirects_to
     http.follows_redirections = false
     assert_http_redirects_to "http://eu.httpbin.org" do
-      http.get "http://eu.httpbin.org/redirect-to?url=http://eu.httpbin.org"
+      http.get "/redirect-to?url=http://eu.httpbin.org"
     end
   end
 end
