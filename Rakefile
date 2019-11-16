@@ -11,6 +11,11 @@ Dir.glob("tasks/*.rake").sort.each do |task|
   load task
 end
 
+desc "Release a new gem version"
+task :release do
+  sh "scripts/release"
+end
+
 task :test do
   Dir.glob("test/*_test.rb").sort.each do |path|
     load path

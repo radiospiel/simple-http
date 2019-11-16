@@ -4,11 +4,10 @@
 # Distributed under the terms of the modified BSD license, see LICENSE.BSD
 
 $:.unshift File.expand_path("../lib", __FILE__)
-require "simple/http"
 
 Gem::Specification.new do |gem|
   gem.name     = "simple-http"
-  gem.version  = Simple::HTTP::VERSION
+  gem.version  = File.read("VERSION")
 
   gem.author   = "radiospiel"
   gem.email    = "eno@radiospiel.org"
