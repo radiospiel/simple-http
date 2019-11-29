@@ -9,9 +9,10 @@ class Simple::HTTP::Response
   attr_reader :headers
   attr_reader :original_body
 
-  def initialize(request:, body:, headers:, status:, message:)
-    @request, @headers = request, headers
-    @status, @message = status, message
+  def initialize(body:, headers:, status:, message:)
+    @headers = headers
+    @status = status
+    @message = message
     @original_body = body
 
     # adjust encoding on original_body
@@ -21,6 +22,14 @@ class Simple::HTTP::Response
       @original_body.force_encoding(charset)
     end
   end
+
+  private
+
+  def set_request(request)
+    @request = request
+  end
+
+  public
 
   # e.g "text/plain"
   def media_type

@@ -145,6 +145,7 @@ class Simple::HTTP
     started_at = Time.now
 
     response = driver.execute_request(request, client: self)
+    response.send(:set_request, request)
 
     logger.info do
       "#{request}: #{response}, #{"%.3f secs" % (Time.now - started_at)}"

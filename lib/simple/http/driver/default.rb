@@ -16,14 +16,13 @@ module Simple::HTTP::Driver::Default
     uri = URI.parse(url)
 
     # build Net::HTTP request
-    request = build_request verb, uri, body, headers, client: client
+    net_request = build_request verb, uri, body, headers, client: client
 
     # execute request
     net_http = load_net_http(uri.scheme, uri.host, uri.port)
-    resp = net_http.request(request)
+    resp = net_http.request(net_request)
 
-    ::Simple::HTTP::Response.new request: request,
-                                 status: Integer(resp.code),
+    ::Simple::HTTP::Response.new status: Integer(resp.code),
                                  message: resp.message,
                                  headers: Simple::HTTP::Headers.new(resp),
                                  body: resp.body
