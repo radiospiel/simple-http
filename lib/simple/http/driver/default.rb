@@ -35,6 +35,7 @@ module Simple::HTTP::Driver::Default
   REQUEST_CLASSES = {
     :HEAD   =>  Net::HTTP::Head,
     :GET    =>  Net::HTTP::Get,
+    :OPTIONS =>  Net::HTTP::Options,
     :POST   =>  Net::HTTP::Post,
     :PUT    =>  Net::HTTP::Put,
     :DELETE =>  Net::HTTP::Delete

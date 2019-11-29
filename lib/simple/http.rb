@@ -55,23 +55,27 @@ class Simple::HTTP
   end
 
   def head(url, headers = {})
-    request :HEAD, url, nil, headers
+    perform_request! :HEAD, url, nil, headers
   end
 
   def get(url, headers = {})
-    request :GET, url, nil, headers
+    perform_request! :GET, url, nil, headers
+  end
+
+  def options(url, headers = {})
+    perform_request! :OPTIONS, url, nil, headers
   end
 
   def post(url, body = nil, headers = {})
-    request :POST, url, body, headers
+    perform_request! :POST, url, body, headers
   end
 
   def put(url, body = nil, headers = {})
-    request :PUT, url, body, headers
+    perform_request! :PUT, url, body, headers
   end
 
   def delete(url, headers = {})
-    request :DELETE, url, nil, headers
+    perform_request! :DELETE, url, nil, headers
   end
 
   #
@@ -83,7 +87,7 @@ class Simple::HTTP
 
   # -- HTTP request -----------------------------------------------------------
 
-  def request(verb, url, body, headers)
+  def perform_request!(verb, url, body, headers)
     #
     # normalize url; i.e. prepend base_url if the url itself is incomplete.
     unless url =~ /^(http|https):/
