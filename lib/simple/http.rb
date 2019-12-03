@@ -105,7 +105,7 @@ class Simple::HTTP
       url.concat default_params
     end
 
-    request = Request.new(verb: verb, url: url, body: body, headers: headers)
+    request = Request.build(verb: verb, url: url, body: body, headers: headers)
 
     execute_request(request)
   end
@@ -120,7 +120,7 @@ class Simple::HTTP
 
     raise ::Simple::HTTP::TooManyRedirections, response if max_redirections <= 0
 
-    request = ::Simple::HTTP::Request.new(verb: :GET, url: response.headers["Location"], headers: {})
+    request = ::Simple::HTTP::Request.build(verb: :GET, url: response.headers["Location"], headers: {})
     execute_request(request, max_redirections: max_redirections - 1)
   end
 
@@ -144,8 +144,15 @@ class Simple::HTTP
   def execute_request_w_logging(request)
     started_at = Time.now
 
-    response = driver.execute_request(request, client: self)
-    response.send(:set_request, request)
+    response_hsh = driver.execute_request(request, client: self)
+
+    status, message, headers, body = response_hsh.values_at :status, :message, :headers, :body
+
+    response = ::Simple::HTTP::Response.build request: request,
+                                              status: status,
+                                              message: message,
+                                              body: body,
+                                              headers: headers
 
     logger.info do
       "#{request}: #{response}, #{"%.3f secs" % (Time.now - started_at)}"

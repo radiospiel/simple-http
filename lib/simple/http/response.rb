@@ -1,6 +1,23 @@
 require_relative "./body_builder"
 
 class Simple::HTTP::Response
+  class << self
+    def build(request:, body:, headers:, status:, message:)
+      unless body_permitted?(request.verb)
+        body = nil
+      end
+
+      new request, body, headers, status, message
+    end
+
+    def body_permitted?(verb)
+      return false if verb == :HEAD
+      return false if verb == :OPTIONS
+
+      true
+    end
+  end
+
   BodyBuilder = Simple::HTTP::BodyBuilder
 
   attr_reader :request
@@ -9,7 +26,10 @@ class Simple::HTTP::Response
   attr_reader :headers
   attr_reader :original_body
 
-  def initialize(body:, headers:, status:, message:)
+  private
+
+  def initialize(request, body, headers, status, message)
+    @request = request
     @headers = headers
     @status = status
     @message = message
@@ -22,6 +42,8 @@ class Simple::HTTP::Response
       @original_body.force_encoding(charset)
     end
   end
+
+  public
 
   # e.g "text/plain"
   def media_type
@@ -60,12 +82,5 @@ class Simple::HTTP::Response
     else
       body
     end
-  end
-
-  private
-
-  # rubocop:disable Naming/AccessorMethodName
-  def set_request(request)
-    @request = request
   end
 end

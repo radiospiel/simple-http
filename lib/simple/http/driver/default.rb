@@ -1,4 +1,4 @@
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+# rubocop:disable Metrics/AbcSize
 
 module Simple::HTTP::Driver
 end
@@ -6,9 +6,7 @@ end
 module Simple::HTTP::Driver::Default
   extend self
 
-  #
-  # do a HTTP request, return its response or, when not successful,
-  # raise an error.
+  # does an HTTP request and returns its response.
   def execute_request(request, client:)
     verb, url, body, headers =
       request.verb, request.url, request.body, request.headers
@@ -20,12 +18,14 @@ module Simple::HTTP::Driver::Default
 
     # execute request
     net_http = load_net_http(uri.scheme, uri.host, uri.port)
-    resp = net_http.request(net_request)
+    response = net_http.request(net_request)
 
-    ::Simple::HTTP::Response.new status: Integer(resp.code),
-                                 message: resp.message,
-                                 headers: Simple::HTTP::Headers.new(resp),
-                                 body: resp.body
+    {
+      status: Integer(response.code),
+      message: response.message,
+      headers: Simple::HTTP::Headers.new(response),
+      body: response.body
+    }
   end
 
   private
@@ -39,10 +39,11 @@ module Simple::HTTP::Driver::Default
     :PUT    =>  Net::HTTP::Put,
     :DELETE =>  Net::HTTP::Delete
   }.freeze #:nodoc:
+  # rubocop:enable Style/HashSyntax, Layout/AlignHash
 
   #
   # build a HTTP request object.
-  def build_request(method, uri, body, _headers, client:)
+  def build_request(method, uri, body, headers, client:)
     klass = REQUEST_CLASSES.fetch(method)
     request = klass.new(uri.request_uri)
 
@@ -52,20 +53,11 @@ module Simple::HTTP::Driver::Default
       request.basic_auth(*client.basic_auth)
     end
 
-    # set request headers
-    # unless headers && !headers.empty?
-    #   # TODO: set headers
-    #   # set_request_headers request, headers
-    # end
-
-    # set request body
-    if request.request_body_permitted? && body
-      request.content_type = "application/json"
-      if body.is_a?(Hash) || body.is_a?(Array)
-        body = JSON.generate(body)
-      end
-      request.body = body
+    if headers && !headers.empty?
+      headers.each { |key, value| request[key] = value }
     end
+
+    request.body = body if body
 
     request
   end
