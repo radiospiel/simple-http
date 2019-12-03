@@ -13,7 +13,13 @@ group :development, :test do
 
   gem "rspec-httpd", "~> 0.1"
   # gem 'rspec-httpd', path: "../rspec-httpd", require: false
-  # gem "simple-httpd", "~> 0.1", require: false
-  gem 'simple-httpd', path: "../simple-httpd", require: false
+
+  gem 'simple-httpd', "~> 0.3.3"
+  # gem 'simple-httpd', path: "../simple-httpd", require: false
+
   gem "simplecov", require: false
+end
+
+ENV["PRELOAD_GEMS"].to_s.split(",").each do |gem_name|
+  gem gem_name
 end
