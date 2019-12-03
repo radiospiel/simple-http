@@ -161,8 +161,23 @@ class Simple::HTTP
     response
   end
 
+  def load_driver_gem
+    require "faraday"
+    "faraday"
+  rescue LoadError
+    nil
+  end
+
   def driver
-    require "simple/http/driver/default"
-    ::Simple::HTTP::Driver::Default
+    @driver_gem ||= load_driver_gem
+
+    case @driver_gem
+    when "faraday"
+      require "simple/http/driver/faraday"
+      ::Simple::HTTP::Driver::Faraday
+    else
+      require "simple/http/driver/default"
+      ::Simple::HTTP::Driver::Default
+    end
   end
 end
