@@ -5,6 +5,7 @@ AllCops:
     - 'test/**/*'
     - 'bin/**/*'
     - 'tasks/*.rake'
+    - 'scripts/*'
     - '*.gemspec'
     - 'Gemfile'
     - 'Rakefile'

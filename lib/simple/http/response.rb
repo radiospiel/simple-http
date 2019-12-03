@@ -23,14 +23,6 @@ class Simple::HTTP::Response
     end
   end
 
-  private
-
-  def set_request(request)
-    @request = request
-  end
-
-  public
-
   # e.g "text/plain"
   def media_type
     @body_builder.media_type
@@ -68,5 +60,12 @@ class Simple::HTTP::Response
     else
       body
     end
+  end
+
+  private
+
+  # rubocop:disable Naming/AccessorMethodName
+  def set_request(request)
+    @request = request
   end
 end
