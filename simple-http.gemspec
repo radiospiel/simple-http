@@ -17,4 +17,6 @@ Gem::Specification.new do |gem|
   gem.description = gem.summary
 
   gem.files = Dir["**/*"].select { |d| d =~ %r{^(README|bin/|data/|ext/|lib/|spec/|test/)} }
+
+  gem.add_runtime_dependency "expectation", "~> 1.1", ">= 1.1.1"
 end

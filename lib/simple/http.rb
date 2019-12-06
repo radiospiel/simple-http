@@ -2,21 +2,23 @@
 # Copyright:: Copyright (c) 2011-2015 radiospiel
 # License::   Distributes under the terms  of the Modified BSD License, see LICENSE.BSD for details.
 
-require "net/http"
+# rubocop:disable Metrics/ClassLength
+
 require "json"
-require "logger"
+require "expectation"
 
 module Simple; end
 class Simple::HTTP; end
 
 require_relative "http/version"
+require_relative "http/helpers"
 require_relative "http/caching"
 require_relative "http/errors"
+require_relative "http/logger"
 require_relative "http/headers"
 require_relative "http/request"
 require_relative "http/response"
-
-require "openssl"
+require_relative "http/checked_response"
 
 #
 # A very simple, Net::HTTP-based HTTP client.
@@ -25,10 +27,6 @@ require "openssl"
 # requests are jsonized, and all data in responses are parsed as JSON if
 # the Content-Type header is set to "application/json".
 class Simple::HTTP
-  #
-  # The logger instance.
-  attr_accessor :logger
-
   #
   # The base URL when set, all requests that do not start with http: or
   # https: are done relative to this base URL.
@@ -41,42 +39,65 @@ class Simple::HTTP
   attr_accessor :follows_redirections
 
   #
+  # Always send these headers.
+  attr_reader :default_headers
+
+  def default_headers=(default_headers)
+    expect! default_params => [Hash, nil]
+    @default_headers = default_headers
+  end
+
+  #
   # When set, appends this to all request URLs
-  attr_accessor :default_params
+  attr_reader :default_params
+
+  def default_params=(default_params)
+    expect! default_params => [Hash, String, nil]
+    @default_params = default_params
+  end
 
   #
   # When set, sets Authorization headers to all requests. Must be an
   # array [ username, password ].
   attr_accessor :basic_auth
 
-  def initialize
+  def initialize(base_url: nil)
+    self.default_headers = {}
+    self.default_params = nil
+    self.base_url = base_url
     self.follows_redirections = true
-    self.logger = Logger.new(STDERR, level: :warn)
   end
 
   def head(url, headers = {})
-    perform_request! :HEAD, url, nil, headers
+    perform_request!(:HEAD, url, nil, headers)
+  end
+
+  def head!(url, headers = {})
+    perform_request!(:HEAD, url, nil, headers)
   end
 
   def get(url, headers = {})
-    perform_request! :GET, url, nil, headers
+    perform_request!(:GET, url, nil, headers)
   end
 
   def options(url, headers = {})
-    perform_request! :OPTIONS, url, nil, headers
+    perform_request!(:OPTIONS, url, nil, headers)
   end
 
   def post(url, body = nil, headers = {})
-    perform_request! :POST, url, body, headers
+    perform_request!(:POST, url, body, headers)
   end
 
   def put(url, body = nil, headers = {})
-    perform_request! :PUT, url, body, headers
+    perform_request!(:PUT, url, body, headers)
   end
 
   def delete(url, headers = {})
-    perform_request! :DELETE, url, nil, headers
+    perform_request!(:DELETE, url, nil, headers)
   end
+
+  # adds get!, post!; etc.
+  include CheckedResponse
 
   #
   # -- Caching ----------------------------------------------------------------
@@ -94,15 +115,15 @@ class Simple::HTTP
       url = File.join(base_url, url)
     end
 
-    uri = URI.parse(url)
-    unless uri.is_a?(URI::HTTP)
-      raise ArgumentError, "Invalid URL: #{url}"
+    expect! url => /^http|https/
+
+    if default_headers
+      headers = headers.merge(default_headers)
     end
 
-    # append default_params, if set
-    if default_params
-      url.concat(url.include?("?") ? "&" : "?")
-      url.concat default_params
+    case default_params
+    when Hash then url = ::Simple::HTTP.build_url(url, default_params)
+    when String then url = url + (url.include?("?") ? "&" : "?") + default_params
     end
 
     request = Request.build(verb: verb, url: url, body: body, headers: headers)
@@ -144,6 +165,10 @@ class Simple::HTTP
   def execute_request_w_logging(request)
     started_at = Time.now
 
+    Simple::HTTP.logger.debug do
+      "> #{request}, w/headers #{request.headers}"
+    end
+
     response_hsh = driver.execute_request(request, client: self)
 
     status, message, headers, body = response_hsh.values_at :status, :message, :headers, :body
@@ -154,30 +179,40 @@ class Simple::HTTP
                                               body: body,
                                               headers: headers
 
-    logger.info do
-      "#{request}: #{response}, #{"%.3f secs" % (Time.now - started_at)}"
+    ::Simple::HTTP.logger.info do
+      # FIXME: for some reason the status message might contain a trailing space?
+      message = response.message.gsub(/ $/, "")
+      "#{request} #{response.status} #{"%.3f" % (Time.now - started_at)} secs: #{message}"
     end
 
     response
   end
 
-  def load_driver_gem
-    require "faraday"
-    "faraday"
-  rescue LoadError
-    nil
+  def determine_driver
+    "default"
+
+    #   require "faraday"
+    #   "faraday"
+    # rescue LoadError
+    #   "default"
   end
 
   def driver
-    @driver_gem ||= load_driver_gem
+    @driver ||= begin
+      driver_name = determine_driver
+      Simple::HTTP.logger.debug "simple-http: Using #{driver_name} driver"
+      driver_name
+    end
 
-    case @driver_gem
+    case @driver
     when "faraday"
       require "simple/http/driver/faraday"
       ::Simple::HTTP::Driver::Faraday
-    else
+    when "default"
       require "simple/http/driver/default"
       ::Simple::HTTP::Driver::Default
+    else
+      raise "Internal error"
     end
   end
 end

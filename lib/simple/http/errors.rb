@@ -22,12 +22,30 @@ class Simple::HTTP::Error < RuntimeError
   end
 
   def verb
-    request.class::METHOD
+    request.verb
   end
 
   def message
-    "#{verb} #{request.uri} ##{status} #{response.message}"
+    "#{verb} #{request.url} ##{status} #{response.message}"
   end
+end
+
+class Simple::HTTP::StatusError < Simple::HTTP::Error
+  def self.raise(response:)
+    error_klass = case response.status
+                  when 400..499 then ::Simple::HTTP::Status4XXError
+                  when 500..599 then ::Simple::HTTP::Status5XXError
+                  else ::Simple::HTTP::StatusError
+    end
+
+    Kernel.raise error_klass.new(response)
+  end
+end
+
+class Simple::HTTP::Status4XXError < Simple::HTTP::StatusError
+end
+
+class Simple::HTTP::Status5XXError < Simple::HTTP::StatusError
 end
 
 class Simple::HTTP::TooManyRedirections < Simple::HTTP::Error

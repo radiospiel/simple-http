@@ -1,5 +1,8 @@
 # rubocop:disable Metrics/AbcSize
 
+require "net/http"
+require "openssl"
+
 module Simple::HTTP::Driver
 end
 

@@ -59,28 +59,58 @@ class Simple::HTTP::Response
   end
 
   def bytes
-    @original_body&.byte_size || 0
+    @original_body&.bytesize || 0
   end
 
   def to_s
     "#{status} #{message.gsub(/\s+$/, "")} (#{bytes} byte)"
   end
 
-  # evaluate and potentially parses response body.
-  # raises an Simple::Http::Error if the result code is not a 2xx
-  def content!
-    raise Error, self unless status >= 200 && status <= 299
+  # evaluate and potentially parse response
+  def content(into: nil)
+    return parsed_content if into.nil?
 
-    content
+    if parsed_content.is_a?(Array)
+      parsed_content.map { |entry| into.new entry }
+    else
+      into.new parsed_content
+    end
   end
 
-  # evaluate and potentially parse response
-  def content
-    case media_type
-    when "application/json"
-      JSON.parse(body) unless body.empty?
-    else
-      body
+  private
+
+  def parsed_content
+    return @parsed_content if defined? @parsed_content
+
+    @parsed_content = case media_type
+                      when "application/json"
+                        body.empty? ? nil : JSON.parse(body)
+                      else
+                        body
     end
+  end
+
+  public
+
+  def checked_content(into:)
+    check_response_status!
+    content(into: into)
+  end
+
+  private
+
+  SUCCESSFUL_STATUS_CODES = 200..299
+
+  def check_response_status!
+    return if SUCCESSFUL_STATUS_CODES.include?(status)
+
+    Simple::HTTP.logger.warn do
+      msg = "#{request}: HTTP request failed w/#{self}"
+      msg += "\nheaders: #{headers}" if Simple::HTTP.logger.debug?
+      msg += "\nresponse body: #{body}" if body && Simple::HTTP.logger.info?
+      msg
+    end
+
+    ::Simple::HTTP::StatusError.raise(response: self)
   end
 end
