@@ -3,6 +3,7 @@
 # License::   Distributes under the terms  of the Modified BSD License, see LICENSE.BSD for details.
 
 # rubocop:disable Metrics/ClassLength
+# rubocop:disable Metrics/AbcSize
 
 require "json"
 require "expectation"

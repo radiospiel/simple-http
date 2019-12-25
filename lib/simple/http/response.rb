@@ -100,11 +100,15 @@ class Simple::HTTP::Response
   def parsed_content
     return @parsed_content if defined? @parsed_content
 
-    @parsed_content = case media_type
-                      when "application/json"
-                        body.empty? ? nil : JSON.parse(body)
-                      else
-                        body
+    @parsed_content = parse_content
+  end
+
+  def parse_content
+    case media_type
+    when "application/json"
+      body.empty? ? nil : JSON.parse(body)
+    else
+      body
     end
   end
 

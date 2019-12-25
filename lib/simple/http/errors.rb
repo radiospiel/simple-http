@@ -36,7 +36,7 @@ class Simple::HTTP::StatusError < Simple::HTTP::Error
                   when 400..499 then ::Simple::HTTP::Status4XXError
                   when 500..599 then ::Simple::HTTP::Status5XXError
                   else ::Simple::HTTP::StatusError
-    end
+                  end
 
     Kernel.raise error_klass.new(response)
   end
