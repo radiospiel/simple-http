@@ -71,13 +71,31 @@ class Simple::HTTP::Response
     return parsed_content if into.nil?
 
     if parsed_content.is_a?(Array)
-      parsed_content.map { |entry| into.new entry }
+      parsed_content.map { |entry| convert_into(entry, into: into) }
     else
-      into.new parsed_content
+      convert_into(parsed_content, into: into)
     end
   end
 
   private
+
+  def convert_into(rec, into:)
+    case into
+    when :struct
+      to_struct(rec)
+    else
+      into.new rec
+    end
+  end
+
+  def to_struct(hsh)
+    keys = hsh.keys
+    values = hsh.values_at(*keys)
+
+    @to_structs ||= {}
+    struct = (@to_structs[keys] ||= Struct.new(*keys.map(&:to_sym)))
+    struct.new(*values)
+  end
 
   def parsed_content
     return @parsed_content if defined? @parsed_content
