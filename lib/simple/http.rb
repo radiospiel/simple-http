@@ -20,6 +20,8 @@ require_relative "http/request"
 require_relative "http/response"
 require_relative "http/checked_response"
 
+Simple::HTTP.extend Simple::HTTP::Helpers
+
 #
 # A very simple, Net::HTTP-based HTTP client.
 #
