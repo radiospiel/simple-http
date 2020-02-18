@@ -1,4 +1,4 @@
-require_relative "./body_builder"
+require_relative "./content_type_parser"
 
 class Simple::HTTP::Response
   class << self
@@ -18,48 +18,35 @@ class Simple::HTTP::Response
     end
   end
 
-  BodyBuilder = Simple::HTTP::BodyBuilder
+  ContentTypeParser = Simple::HTTP::ContentTypeParser
 
   attr_reader :request
   attr_reader :status
   attr_reader :message
   attr_reader :headers
-  attr_reader :original_body
+  attr_reader :body
+
+  # e.g "text/plain"
+  attr_reader :media_type
 
   private
 
   def initialize(request, body, headers, status, message)
     @request = request
     @headers = headers
-    @status = status
+    @status  = status
     @message = message
-    @original_body = body
 
-    # adjust encoding on original_body
-    @body_builder = BodyBuilder.new(headers["Content-Type"])
-
-    if @original_body && (charset = @body_builder.charset)
-      @original_body.force_encoding(charset)
-    end
+    # evaluate content type header, set media_type and set body encoding.
+    ctp = ContentTypeParser.new(headers["Content-Type"])
+    @media_type = ctp.media_type
+    @body       = ctp.reencode!(body) if body
   end
 
   public
 
-  # e.g "text/plain"
-  def media_type
-    @body_builder.media_type
-  end
-
-  # returns the body
-  #
-  # This method reencodes the text body into UTF-8. Non-text bodies should be
-  # encoded as ASCII-8BIT (a.k.a. "BINARY")
-  def body
-    @body ||= @body_builder.reencode(@original_body)
-  end
-
   def bytes
-    @original_body&.bytesize || 0
+    @body ? @body.bytesize : 0
   end
 
   def to_s
