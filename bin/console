@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+root=File.expand_path "#{File.dirname(__FILE__)}/.."
+$: << "#{root}/lib"
+
+require "bundler"
+Bundler.require
+
+require "simple-http"
+
+STDERR.puts <<~MSG
+  # example
+  Simple::HTTP.new.get("https://httpbin.org/get")
+MSG
+
+require "pry"
+pry
