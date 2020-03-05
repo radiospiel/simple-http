@@ -1,6 +1,11 @@
 module Simple::HTTP::CheckedResponse
   SELF = self
 
+  def head!(url, headers = {})
+    response = perform_request!(:HEAD, url, nil, headers)
+    response.check_response_status!
+  end
+
   def get!(url, headers = {}, into: nil)
     response = perform_request!(:GET, url, nil, headers)
     response.checked_content(into: into)

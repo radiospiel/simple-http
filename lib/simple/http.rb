@@ -75,10 +75,6 @@ class Simple::HTTP
     perform_request!(:HEAD, url, nil, headers)
   end
 
-  def head!(url, headers = {})
-    perform_request!(:HEAD, url, nil, headers)
-  end
-
   def get(url, headers = {})
     perform_request!(:GET, url, nil, headers)
   end
