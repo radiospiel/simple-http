@@ -14,8 +14,8 @@ module Simple::HTTP::Helpers
   private
 
   def build_query(params)
-    params = params.reject { |_k, v| v.blank? }
-    return nil if params.blank?
+    params = params.reject { |_k, v| v == "" || v.nil? }
+    return nil if params.empty?
 
     params.map { |k, value| "#{k}=#{CGI.escape(value.to_s)}" }.join("&")
   end
